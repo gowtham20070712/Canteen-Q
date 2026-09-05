@@ -1,0 +1,42 @@
+         C Programming Tasks
+1.Bank details
+
+include<stdio.h>
+int main(){
+	char Bank_name[25] = "State Bank Of India";
+	char Branch_name[20] = "Coimbatore";
+	char name[10] = "Renuka";
+	int Account_no = 1111;
+	char IFSC_Code[30] = "123abcd321";
+	long long Mobile_no= 9876504321;
+	char Address[50] = "50 BK pudhur Coimbatore";
+    printf("Bank_name:%s\n",Bank_name);
+    printf("Branch_name:%s\n",Branch_name);
+    printf("Name:%s\n",name);
+    printf("Account_no:%d\n",Account_no);
+    printf("IFSC_Code:%s\n",IFSC_Code);
+    printf("Mobile_no:%lld\n",Mobile_no);
+    printf("Address:%s\n",Address);
+}
+2.Hospital form
+#include<stdio.h>
+int main(){
+	char Patient_Name[25] = "Ms.Renuka";
+	char Gender[10] = "Female";
+	int Age = 18;
+	char weight [5] = "50kg";
+	long long Mobile_no = 9087654321;
+	char email_id[30] = "renukhamarimuthu1310@gmail.com";
+	char Address[70] = "18,Garden road,Komaralingam,Madathukulam,Trippur-642204";
+	char addmission_date[10] = "1.9.2026";
+	char reason_for_visit[20] = "Pyrexia";
+	printf("Patient_Name:%s\n",Patient_Name);
+	printf("Gender:%s\n",Gender);
+	printf("Age:%d\n",Age);
+	printf("weight:%s\n",weight);
+	printf("Mobile_no:%lld\n",Mobile_no);
+	printf("email id:%s\n",email_id);
+	printf("Address:%s\n",Address);
+	printf("addmission date:%s\n",addmission_date);
+	printf("reason for visit:%s\n",reason_for_visit);
+}

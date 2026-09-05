@@ -3,37 +3,152 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🍔 Canteen Queue AI | Smart Campus Dining & Live Wait Tracker</title>
+  <title>🍔 Canteen Queue AI | Standalone Website</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- QRCode.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <!-- Custom Styles -->
-  <link rel="stylesheet" href="css/styles.css">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              orange: '#f97316',
-              dark: '#0b0f19',
-              slate: '#1e293b'
-            }
-          }
-        }
-      }
+  <style>
+    :root {
+      --primary: #f97316;
+      --primary-dark: #ea580c;
+      --secondary: #0f172a;
+      --accent-green: #10b981;
+      --accent-yellow: #f59e0b;
+      --accent-red: #ef4444;
     }
-  </script>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #0b0f19;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    .glass-panel {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-panel-hover {
+      transition: all 0.25s ease;
+    }
+    .glass-panel-hover:hover {
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(249, 115, 22, 0.3);
+      transform: translateY(-2px);
+    }
+    .glow-orange { box-shadow: 0 0 25px -5px rgba(249, 115, 22, 0.35); }
+    .glow-green { box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.35); }
+    .glow-red { box-shadow: 0 0 25px -3px rgba(239, 68, 68, 0.4); }
+    .queue-stepper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      margin: 1.5rem 0;
+    }
+    .queue-stepper::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      right: 5%;
+      height: 4px;
+      background: #334155;
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+    .queue-stepper-progress {
+      position: absolute;
+      top: 50%;
+      left: 5%;
+      height: 4px;
+      background: linear-gradient(90deg, #f97316, #10b981);
+      transform: translateY(-50%);
+      z-index: 2;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .queue-step-node {
+      position: relative;
+      z-index: 3;
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      background: #1e293b;
+      border: 3px solid #475569;
+      color: #94a3b8;
+      transition: all 0.4s ease;
+    }
+    .queue-step-node.completed {
+      background: #0f766e;
+      border-color: #14b8a6;
+      color: #ffffff;
+    }
+    .queue-step-node.active {
+      background: #f97316;
+      border-color: #ffedd5;
+      color: #ffffff;
+      transform: scale(1.18);
+      box-shadow: 0 0 20px rgba(249, 115, 22, 0.6);
+      animation: pulse-ring 2s infinite;
+    }
+    .queue-step-node.ready {
+      background: #10b981;
+      border-color: #d1fae5;
+      color: #ffffff;
+      transform: scale(1.22);
+      box-shadow: 0 0 24px rgba(16, 185, 129, 0.7);
+      animation: bounce-ready 1.5s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+      70% { box-shadow: 0 0 0 14px rgba(249, 115, 22, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+    }
+    @keyframes bounce-ready {
+      0%, 100% { transform: translateY(0) scale(1.22); }
+      50% { transform: translateY(-6px) scale(1.26); }
+    }
+    .status-ping { position: relative; }
+    .status-ping::after {
+      content: '';
+      position: absolute;
+      top: -2px; left: -2px; right: -2px; bottom: -2px;
+      border-radius: 9999px;
+      background: inherit;
+      opacity: 0.75;
+      animation: ping-slow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    @keyframes ping-slow {
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+    .qr-card-container {
+      background: white;
+      padding: 0.75rem;
+      border-radius: 1rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      display: inline-block;
+    }
+    .kanban-col-body {
+      min-height: 420px;
+      max-height: calc(100vh - 300px);
+      overflow-y: auto;
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-orange-500 selection:text-white">
 
   <!-- Toast Notification Hub -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 pointer-events-none"></div>
 
-  <!-- Top Sticky Navigation Bar -->
+  <!-- Top Navigation Bar -->
   <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       
@@ -67,13 +182,10 @@
         </button>
       </nav>
 
-      <!-- Right Action Area: User Identity & Cart Button -->
+      <!-- Right Action Area -->
       <div class="flex items-center gap-2.5">
-        
-        <!-- Active User Badge & Login Switcher -->
         <div id="currentUserBadge" class="hidden sm:block"></div>
 
-        <!-- Separate Login Modals Trigger Button -->
         <div class="relative group">
           <button class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 flex items-center gap-1.5 transition">
             <span>🔑 Switch Login</span>
@@ -89,7 +201,6 @@
           </div>
         </div>
 
-        <!-- Cart Slide-Over Toggle -->
         <button id="btnToggleCart" class="relative p-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 transition">
           <span class="text-base">🛒</span>
           <span id="cartCountBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 rounded-full bg-orange-500 text-[10px] font-black flex items-center justify-center text-white border-2 border-slate-950">
@@ -112,12 +223,8 @@
   <!-- Main Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
-    <!-- ========================================================================= -->
-    <!-- VIEW 1: HOME / DASHBOARD                                                  -->
-    <!-- ========================================================================= -->
+    <!-- VIEW 1: HOME / DASHBOARD -->
     <section id="view-home" class="space-y-6">
-
-      <!-- Hero Header & Welcome -->
       <div class="glass-panel rounded-3xl p-6 sm:p-8 border border-slate-800 relative overflow-hidden">
         <div class="absolute -right-10 -bottom-10 w-72 h-72 rounded-full bg-orange-500/10 blur-3xl pointer-events-none"></div>
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -133,7 +240,6 @@
             </p>
           </div>
 
-          <!-- Quick Action Buttons -->
           <div class="flex flex-wrap items-center gap-3">
             <button data-view-target="student" class="px-5 py-3 rounded-2xl bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-sm font-bold shadow-lg shadow-orange-500/25 transition flex items-center gap-2">
               <span>🍔 Order Food Now</span>
@@ -148,7 +254,6 @@
 
       <!-- Live Metric Cards Required by Prompt -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
         <!-- Card 1: Current Queue -->
         <div class="glass-panel glass-panel-hover rounded-2xl p-5 border border-slate-800">
           <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
@@ -160,7 +265,7 @@
             <span class="text-xs text-slate-400 font-medium">students in line</span>
           </div>
           <div class="mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Live Counter Influx</span>
+            <span>Live Influx</span>
             <span class="text-orange-400 font-bold">+3 in last 5 min</span>
           </div>
         </div>
@@ -175,8 +280,8 @@
             <span id="homeEstimatedWait" class="text-3xl font-black text-orange-400">12 min</span>
           </div>
           <div class="mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Fast Turnaround</span>
-            <span class="text-slate-300">Target &lt; 15 mins</span>
+            <span>Target</span>
+            <span class="text-slate-300">&lt; 15 mins</span>
           </div>
         </div>
 
@@ -196,128 +301,72 @@
           </div>
         </div>
 
-        <!-- Card 4: Queue Status Indicator (🟢 Low / 🟡 Medium / 🔴 High) -->
+        <!-- Card 4: Queue Status Indicator -->
         <div class="glass-panel glass-panel-hover rounded-2xl p-5 border border-slate-800">
           <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-2">
-            <span>Queue Status Indicator</span>
+            <span>Queue Status</span>
             <span class="text-lg">🚦</span>
           </div>
-          <div id="homeQueueStatusBadge" class="mt-1">
-            <!-- Dynamically injected: 🟢 Low / 🟡 Medium / 🔴 High -->
-          </div>
+          <div id="homeQueueStatusBadge" class="mt-1"></div>
           <div class="mt-3 pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Threshold Levels</span>
+            <span>Levels</span>
             <span class="text-slate-400">🟢 &lt;8 | 🟡 8-15 | 🔴 &gt;15</span>
           </div>
         </div>
-
       </div>
 
-      <!-- AI Feature Highlight: Predicts Queue, Busy Periods & Suggests Best Time to Order -->
-      <div id="homeAiRecommendationBox" class="glass-panel rounded-2xl p-6 border border-orange-500/30 bg-gradient-to-r from-orange-950/20 via-slate-900 to-slate-900">
-        <!-- Rendered by app.js -->
-      </div>
+      <!-- AI Feature Highlight -->
+      <div id="homeAiRecommendationBox" class="glass-panel rounded-2xl p-6 border border-orange-500/30 bg-gradient-to-r from-orange-950/20 via-slate-900 to-slate-900"></div>
 
-      <!-- Two Portal Feature Cards (Student vs Staff) -->
+      <!-- Dual Portals Cards -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-        <!-- Student Experience Card -->
         <div class="glass-panel rounded-3xl p-6 border border-slate-800 flex flex-col justify-between">
           <div>
-            <div class="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl mb-4">
-              🎓
-            </div>
+            <div class="w-10 h-10 rounded-2xl bg-blue-500/20 text-blue-400 flex items-center justify-center text-xl mb-4">🎓</div>
             <h3 class="text-xl font-bold text-white">Student Dining Portal</h3>
             <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Browse today's cafeteria menu, add combos to your cart, place orders digitally, and track your live queue position (<strong class="text-slate-200">#12 → #8 → #4 → Ready</strong>) with scannable QR pickup passes.
+              Browse today's cafeteria menu, add items to your cart, place orders digitally, and track your live queue position (<strong class="text-slate-200">#12 → #8 → #4 → Ready</strong>) with scannable QR pickup passes.
             </p>
-            <ul class="mt-4 space-y-2 text-xs text-slate-300">
-              <li class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span> Real-time countdown to food pickup
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span> Instant digital QR token for counter authentication
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="text-emerald-400 font-bold">✓</span> Dietary filters: Pure Veg 🟢 & Non-Veg 🔴
-              </li>
-            </ul>
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
-            <button data-open-student-login class="text-xs font-semibold text-blue-400 hover:text-blue-300">
-              Change Student Login →
-            </button>
-            <button data-view-target="student" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
-              Open Student Portal
-            </button>
+            <button data-open-student-login class="text-xs font-semibold text-blue-400 hover:text-blue-300">Change Student Login →</button>
+            <button data-view-target="student" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">Open Student Portal</button>
           </div>
         </div>
 
-        <!-- Staff Experience Card -->
         <div class="glass-panel rounded-3xl p-6 border border-slate-800 flex flex-col justify-between">
           <div>
-            <div class="w-10 h-10 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl mb-4">
-              👨‍🍳
-            </div>
+            <div class="w-10 h-10 rounded-2xl bg-orange-500/20 text-orange-400 flex items-center justify-center text-xl mb-4">👨‍🍳</div>
             <h3 class="text-xl font-bold text-white">Staff Kitchen Operations</h3>
             <p class="text-xs text-slate-400 mt-1.5 leading-relaxed">
               Full order Kanban board (<strong class="text-slate-200">Pending, Preparing, Ready, Completed</strong>), queue speed telemetry, automated rush alert triggers, and peak projection analytics.
             </p>
-            <ul class="mt-4 space-y-2 text-xs text-slate-300">
-              <li class="flex items-center gap-2">
-                <span class="text-orange-400 font-bold">✓</span> AI Congestion Warning: <em class="text-slate-200">“Peak expected at 1:00 PM”</em>
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="text-orange-400 font-bold">✓</span> Automatic staff chime alerts when queue &gt; 15 students
-              </li>
-              <li class="flex items-center gap-2">
-                <span class="text-orange-400 font-bold">✓</span> One-click ticket calling & counter dispatch
-              </li>
-            </ul>
           </div>
           <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between">
-            <button data-open-staff-login class="text-xs font-semibold text-orange-400 hover:text-orange-300">
-              Change Staff Login →
-            </button>
-            <button data-view-target="staff" class="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold transition">
-              Open Staff Dashboard
-            </button>
+            <button data-open-staff-login class="text-xs font-semibold text-orange-400 hover:text-orange-300">Change Staff Login →</button>
+            <button data-view-target="staff" class="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold transition">Open Staff Dashboard</button>
           </div>
         </div>
-
       </div>
-
     </section>
 
-    <!-- ========================================================================= -->
-    <!-- VIEW 2: STUDENT PORTAL                                                    -->
-    <!-- ========================================================================= -->
+    <!-- VIEW 2: STUDENT PORTAL -->
     <section id="view-student" class="hidden space-y-6">
+      <div id="studentTicketCard" class="glass-panel rounded-3xl border border-orange-500/30 overflow-hidden shadow-2xl"></div>
 
-      <!-- Active Digital Queue Ticket & Live Position Tracker (#12 -> #8 -> #4 -> Ready) -->
-      <div id="studentTicketCard" class="glass-panel rounded-3xl border border-orange-500/30 overflow-hidden shadow-2xl">
-        <!-- Rendered by student.js -->
-      </div>
-
-      <!-- Menu Header & Filter Controls -->
       <div class="glass-panel rounded-3xl p-5 border border-slate-800 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h2 class="text-2xl font-black text-white">Select Food Items</h2>
             <p class="text-xs text-slate-400">Order ahead to minimize canteen queue wait time</p>
           </div>
-
-          <!-- Search Input -->
           <div class="relative w-full md:w-72">
             <input type="text" id="menuSearchInput" placeholder="Search burger, bowl, drinks..." class="w-full px-4 py-2.5 pl-10 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-orange-500 transition">
             <span class="absolute left-3 top-2.5 text-slate-400 text-sm">🔍</span>
           </div>
         </div>
 
-        <!-- Filter Bar -->
         <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
-          
-          <!-- Categories -->
           <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs font-semibold">
             <button data-category="all" class="px-3.5 py-1.5 rounded-xl bg-orange-500 text-white transition">All Items</button>
             <button data-category="burgers" class="px-3.5 py-1.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white transition">🍔 Burgers</button>
@@ -326,29 +375,19 @@
             <button data-category="drinks" class="px-3.5 py-1.5 rounded-xl bg-slate-900 text-slate-300 hover:text-white transition">🥤 Beverages</button>
           </div>
 
-          <!-- Dietary Tag Toggle -->
           <div class="flex items-center gap-1.5 text-xs font-semibold">
             <button data-diet="all" class="px-3 py-1.5 rounded-xl bg-slate-900 ring-2 ring-orange-500 text-slate-200">All</button>
             <button data-diet="veg" class="px-3 py-1.5 rounded-xl bg-slate-900 text-emerald-400 border border-emerald-500/30">🟢 Veg Only</button>
             <button data-diet="non-veg" class="px-3 py-1.5 rounded-xl bg-slate-900 text-rose-400 border border-rose-500/30">🔴 Non-Veg</button>
           </div>
-
         </div>
       </div>
 
-      <!-- Food Menu Grid -->
-      <div id="menuItemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Injected by student.js -->
-      </div>
-
+      <div id="menuItemsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
     </section>
 
-    <!-- ========================================================================= -->
-    <!-- VIEW 3: STAFF DASHBOARD                                                   -->
-    <!-- ========================================================================= -->
+    <!-- VIEW 3: STAFF DASHBOARD -->
     <section id="view-staff" class="hidden space-y-6">
-
-      <!-- Staff Header & Controls -->
       <div class="glass-panel rounded-3xl p-6 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
@@ -371,12 +410,8 @@
         </div>
       </div>
 
-      <!-- AI Alert & Peak Prediction Banner Required by Prompt -->
-      <div id="staffAiAlertBox">
-        <!-- Rendered by staff.js -->
-      </div>
+      <div id="staffAiAlertBox"></div>
 
-      <!-- Staff Live Stats Strip -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="glass-panel p-4 rounded-2xl border border-slate-800">
           <span class="text-xs text-slate-400">Current Queue Size</span>
@@ -396,10 +431,8 @@
         </div>
       </div>
 
-      <!-- Kitchen Kanban Board (Pending, Preparing, Ready, Completed) -->
+      <!-- Kitchen Kanban Columns -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-
-        <!-- Column 1: Pending Orders -->
         <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex flex-col">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div class="flex items-center gap-2">
@@ -411,7 +444,6 @@
           <div id="kanbanListPending" class="kanban-col-body space-y-2.5 flex-1 pr-1"></div>
         </div>
 
-        <!-- Column 2: Preparing in Kitchen -->
         <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex flex-col">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div class="flex items-center gap-2">
@@ -423,7 +455,6 @@
           <div id="kanbanListPreparing" class="kanban-col-body space-y-2.5 flex-1 pr-1"></div>
         </div>
 
-        <!-- Column 3: Ready for Pickup -->
         <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex flex-col">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div class="flex items-center gap-2">
@@ -435,7 +466,6 @@
           <div id="kanbanListReady" class="kanban-col-body space-y-2.5 flex-1 pr-1"></div>
         </div>
 
-        <!-- Column 4: Completed Orders -->
         <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex flex-col">
           <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-3">
             <div class="flex items-center gap-2">
@@ -446,10 +476,9 @@
           </div>
           <div id="kanbanListCompleted" class="kanban-col-body space-y-2.5 flex-1 pr-1"></div>
         </div>
-
       </div>
 
-      <!-- Queue Length Graph Required by Prompt -->
+      <!-- Queue Length Graph -->
       <div class="glass-panel rounded-3xl p-6 border border-slate-800 space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -462,19 +491,14 @@
             🔥 AI Flag: Peak expected at 1:00 PM (~35 students)
           </span>
         </div>
-
         <div class="h-64 w-full relative">
           <canvas id="staffQueueChartCanvas"></canvas>
         </div>
       </div>
-
     </section>
 
-    <!-- ========================================================================= -->
-    <!-- VIEW 4: AI ANALYTICS & FORECAST                                           -->
-    <!-- ========================================================================= -->
+    <!-- VIEW 4: AI ANALYTICS -->
     <section id="view-ai-analytics" class="hidden space-y-6">
-
       <div class="glass-panel rounded-3xl p-6 border border-slate-800">
         <div class="flex items-center gap-3 mb-2">
           <span class="text-2xl">🤖</span>
@@ -484,7 +508,6 @@
           </div>
         </div>
 
-        <!-- 4 AI KPI Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
           <div class="p-4 rounded-2xl bg-slate-900/80 border border-slate-800">
             <span class="text-xs text-slate-400">Predicted Peak Hour</span>
@@ -508,7 +531,6 @@
           </div>
         </div>
 
-        <!-- Big Chart -->
         <div class="mt-6 pt-6 border-t border-slate-800">
           <h4 class="text-sm font-bold text-slate-200 mb-4">Historical vs AI Projected Queue Timeline</h4>
           <div class="h-80 w-full relative">
@@ -516,72 +538,48 @@
           </div>
         </div>
       </div>
-
     </section>
 
   </main>
 
-  <!-- ========================================================================= -->
-  <!-- CART DRAWER (SLIDE-OVER)                                                  -->
-  <!-- ========================================================================= -->
+  <!-- CART DRAWER -->
   <div id="cartDrawer" class="fixed inset-y-0 right-0 w-full max-w-md bg-slate-950/95 border-l border-slate-800 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col backdrop-blur-xl">
-    
-    <!-- Drawer Header -->
     <div class="p-5 border-b border-slate-800 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
         <span class="text-xl">🛒</span>
         <h3 class="font-bold text-lg text-white">Your Food Tray</h3>
       </div>
-      <button id="btnCloseCart" class="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white transition">
-        ✕
-      </button>
+      <button id="btnCloseCart" class="p-2 rounded-xl bg-slate-900 text-slate-400 hover:text-white transition">✕</button>
     </div>
 
-    <!-- Drawer Items List -->
-    <div id="cartItemsList" class="flex-1 overflow-y-auto p-5 space-y-3">
-      <!-- Injected by student.js -->
-    </div>
+    <div id="cartItemsList" class="flex-1 overflow-y-auto p-5 space-y-3"></div>
 
-    <!-- Drawer Footer / Checkout -->
     <div class="p-5 border-t border-slate-800 bg-slate-900/50 space-y-3">
       <div class="flex items-center justify-between text-xs text-slate-400">
         <span>Estimated Line Wait:</span>
         <span id="cartEstimatedWait" class="text-orange-400 font-bold">~12 mins</span>
       </div>
-
-      <!-- Special Notes / Instructions -->
       <div>
         <label class="text-[11px] text-slate-400 font-semibold block mb-1">Kitchen Prep Note (Optional):</label>
         <input type="text" id="orderNotesInput" placeholder="e.g. extra napkins, no onions..." class="w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-orange-500">
       </div>
-
       <div class="flex items-center justify-between text-base font-bold text-white pt-2 border-t border-slate-800">
         <span>Subtotal</span>
         <span id="cartSubtotal" class="text-xl text-orange-400 font-black">$0.00</span>
       </div>
-
       <div class="grid grid-cols-2 gap-2 pt-2">
-        <button id="btnClearCart" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">
-          Clear Tray
-        </button>
-        <button id="btnPlaceOrder" class="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-lg shadow-orange-500/25 transition">
-          Place Order →
-        </button>
+        <button id="btnClearCart" class="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition">Clear Tray</button>
+        <button id="btnPlaceOrder" class="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold shadow-lg shadow-orange-500/25 transition">Place Order →</button>
       </div>
     </div>
-
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- MODAL: STUDENT LOGIN SEPARATE                                             -->
-  <!-- ========================================================================= -->
+  <!-- MODAL: STUDENT LOGIN -->
   <div id="studentLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-lg">
-            🎓
-          </div>
+          <div class="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-lg">🎓</div>
           <div>
             <h3 class="font-bold text-base text-white">Student Login</h3>
             <p class="text-xs text-slate-400">Access your meal token & live queue status</p>
@@ -589,8 +587,6 @@
         </div>
         <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
       </div>
-
-      <!-- Quick 1-Click Demo Profiles -->
       <div class="space-y-2">
         <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quick 1-Click Demo Profiles</span>
         <div class="grid grid-cols-1 gap-2">
@@ -610,16 +606,10 @@
           </button>
         </div>
       </div>
-
-      <!-- Manual Inputs (Visual Prototype Completeness) -->
       <div class="pt-2 border-t border-slate-800 space-y-3">
         <div>
           <label class="text-xs text-slate-400 block mb-1">Student Roll Number / Email</label>
           <input type="text" value="ST-CS2104@campus.edu" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none">
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Campus Dining PIN</label>
-          <input type="password" value="••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none">
         </div>
         <button onclick="document.getElementById('btnPresetStudentAlex').click()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition">
           Sign In as Student
@@ -628,16 +618,12 @@
     </div>
   </div>
 
-  <!-- ========================================================================= -->
-  <!-- MODAL: STAFF LOGIN SEPARATE                                               -->
-  <!-- ========================================================================= -->
+  <!-- MODAL: STAFF LOGIN -->
   <div id="staffLoginModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-panel w-full max-w-md rounded-3xl p-6 border border-slate-700 shadow-2xl space-y-4">
       <div class="flex items-center justify-between pb-3 border-b border-slate-800">
         <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-lg">
-            👨‍🍳
-          </div>
+          <div class="w-9 h-9 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-lg">👨‍🍳</div>
           <div>
             <h3 class="font-bold text-base text-white">Staff / Kitchen Login</h3>
             <p class="text-xs text-slate-400">Access kitchen counter orders & surge controls</p>
@@ -645,8 +631,6 @@
         </div>
         <button data-close-modal class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
       </div>
-
-      <!-- Quick 1-Click Staff Presets -->
       <div class="space-y-2">
         <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Quick 1-Click Staff Profiles</span>
         <div class="grid grid-cols-1 gap-2">
@@ -666,16 +650,10 @@
           </button>
         </div>
       </div>
-
-      <!-- Manual Staff Inputs -->
       <div class="pt-2 border-t border-slate-800 space-y-3">
         <div>
           <label class="text-xs text-slate-400 block mb-1">Staff ID / Employee Badge</label>
           <input type="text" value="EMP-409" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none">
-        </div>
-        <div>
-          <label class="text-xs text-slate-400 block mb-1">Kitchen Security Key</label>
-          <input type="password" value="••••••••" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none">
         </div>
         <button onclick="document.getElementById('btnPresetStaffChef').click()" class="w-full py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs transition">
           Sign In as Staff
@@ -684,19 +662,17 @@
     </div>
   </div>
 
-  <!-- Footer -->
   <footer class="mt-12 border-t border-slate-900 bg-slate-950/60 py-6 text-center text-xs text-slate-500">
     <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <span>🍔 Canteen Queue AI Prototype • Campus Smart Dining System</span>
+      <span>🍔 Canteen Queue AI Standalone Prototype • Campus Smart Dining</span>
       <div class="flex items-center gap-4 text-[11px]">
         <span class="flex items-center gap-1.5">🟢 Status: Operational</span>
         <span>Avg 40s / student</span>
-        <span>Multi-tab sync active</span>
       </div>
     </div>
   </footer>
 
-  <!-- Scripts in dependency order -->
+  <!-- Embedded Central Application Scripts -->
   <script src="js/store.js"></script>
   <script src="js/ai-engine.js"></script>
   <script src="js/student.js"></script>
